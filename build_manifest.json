@@ -1,0 +1,1433 @@
+{
+  "version": 14,
+  "product": "Mesen CE 2.2.1",
+  "source_commit": "20ba206cef5ba207c21203176d02cb9f43dda9fb",
+  "module": "MesenCore.dll",
+  "file_sha256": "55a5f918c8ead04d4a401fc12f0ce9e4de69bebbc484f1ca3a7c018916b1fad1",
+  "timestamp": 1780652099,
+  "image_size": 74715136,
+  "code_rva": 4096,
+  "code_size": 5800728,
+  "code_sha256": "6a99598b707be2d665538e6000fb898a3f5e463268081f978c7772db92e0b61c",
+  "effects": [
+    {
+      "id": "triangle_saw",
+      "title": "Triangle becomes a sawtooth",
+      "description": "The triangle channel repeats its first 16 samples instead of all 32: a descending sawtooth, with half the sequence period. Audible when the NES triangle channel is active. Game tempo is unchanged.",
+      "points": [
+        {
+          "rva": 1695387,
+          "original": "80e21f",
+          "offset": 2,
+          "value": 15,
+          "label": "Triangle sequencer wrap",
+          "original_instruction": "and dl, 0x1f",
+          "modified_instruction": "and dl, 0xf",
+          "evidence": "NesApu::Run calls/inline-runs square1, square2, noise, triangle, DMC in source order. Here TriangleChannel::Run increments sequence position, wraps at 32, and reads the 32-byte triangle waveform. The new mask keeps every index within the original table. Timer and length-counter logic unchanged."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "triangle_short",
+      "title": "Triangle becomes a short stepped wave",
+      "description": "The triangle sequencer repeats its first eight samples. Shorter period, smaller amplitude range, and a different timbre. Audible when the triangle channel is active.",
+      "points": [
+        {
+          "rva": 1695387,
+          "original": "80e21f",
+          "offset": 2,
+          "value": 7,
+          "label": "Triangle sequencer wrap",
+          "original_instruction": "and dl, 0x1f",
+          "modified_instruction": "and dl, 7",
+          "evidence": "NesApu::Run calls/inline-runs square1, square2, noise, triangle, DMC in source order. Here TriangleChannel::Run increments sequence position, wraps at 32, and reads the 32-byte triangle waveform. The new mask keeps every index within the original table. Timer and length-counter logic unchanged."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "noise_metal",
+      "title": "Noise becomes metallic percussion",
+      "description": "Both noise modes use feedback tap 5. From seed 1 the generator repeats after 35 steps, rather than 32767 or 93. This can turn noise percussion into a buzzy tone. Audible when the noise channel is active.",
+      "points": [
+        {
+          "rva": 1689970,
+          "original": "b901000000",
+          "offset": 1,
+          "value": 5,
+          "label": "Normal-noise feedback tap",
+          "original_instruction": "mov ecx, 1",
+          "modified_instruction": "mov ecx, 5",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width."
+        },
+        {
+          "rva": 1689871,
+          "original": "41bc06000000",
+          "offset": 2,
+          "value": 5,
+          "label": "Short-noise feedback tap",
+          "original_instruction": "mov r12d, 6",
+          "modified_instruction": "mov r12d, 5",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "sprite_depth",
+      "title": "Reverse sprite depth",
+      "description": "When a sprite overlaps an opaque background pixel, invert its front/behind rule. Transparent background behavior stays the same. Most obvious in games that use foreground scenery or behind-background sprites.",
+      "points": [
+        {
+          "rva": 984693,
+          "original": "7512",
+          "offset": 0,
+          "value": 116,
+          "label": "Sprite/background depth rule",
+          "original_instruction": "jne 0xf0689",
+          "modified_instruction": "je 0xf0689",
+          "evidence": "DefaultNesPpu vtable Run at 0xefc00 contains GetPixelColor. This conditional follows the test of NesSpriteInfo.BackgroundPriority and the background-nonzero test, AFTER sprite-zero-hit logic. Swapping JNE to JE reverses the priority decision without changing branch destinations, sprite index, buffers, or timing."
+        }
+      ],
+      "category": "visual"
+    },
+    {
+      "id": "cutout_1",
+      "title": "Palette cutout: low bit",
+      "description": "Only pixels with this color bit set retain their selected palette color; the others use the universal backdrop. Changes the pixel transparency rule after sprite-zero-hit evaluation.",
+      "points": [
+        {
+          "rva": 984745,
+          "original": "40f6c703",
+          "offset": 3,
+          "value": 1,
+          "label": "Pixel transparency rule",
+          "original_instruction": "test dil, 3",
+          "modified_instruction": "test dil, 1",
+          "evidence": "DefaultNesPpu::DrawPixel uses color&3 to choose the universal backdrop. This instruction is after sprite-zero-hit processing and layer selection; using a subset mask only changes which existing palette index or zero is selected. No index can exceed the original 0\u201331 range."
+        }
+      ],
+      "category": "visual"
+    },
+    {
+      "id": "cutout_2",
+      "title": "Palette cutout: high bit",
+      "description": "Only pixels with this color bit set retain their selected palette color; the others use the universal backdrop. Changes the pixel transparency rule after sprite-zero-hit evaluation.",
+      "points": [
+        {
+          "rva": 984745,
+          "original": "40f6c703",
+          "offset": 3,
+          "value": 2,
+          "label": "Pixel transparency rule",
+          "original_instruction": "test dil, 3",
+          "modified_instruction": "test dil, 2",
+          "evidence": "DefaultNesPpu::DrawPixel uses color&3 to choose the universal backdrop. This instruction is after sprite-zero-hit processing and layer selection; using a subset mask only changes which existing palette index or zero is selected. No index can exceed the original 0\u201331 range."
+        }
+      ],
+      "category": "visual"
+    },
+    {
+      "id": "palette_phase",
+      "title": "Swap adjacent tile palette timing",
+      "description": "The background uses the other previous/current tile palette at the fine-scroll boundary. Produces misplaced color regions while preserving tile patterns. Effect depends on scrolling and adjacent tiles using different palettes.",
+      "points": [
+        {
+          "rva": 984730,
+          "original": "0f92c0",
+          "offset": 1,
+          "value": 147,
+          "label": "Background tile palette phase",
+          "original_instruction": "setb al",
+          "modified_instruction": "setae al",
+          "evidence": "GetPixelColor background return selects previous/current tile palette based on fine scroll and dot position. SETB becomes SETAE, selecting the other of two existing palette bytes. This occurs after sprite-zero-hit logic; both indices remain bounded."
+        }
+      ],
+      "category": "visual"
+    },
+    {
+      "id": "impossible_sound",
+      "title": "Impossible sound chip",
+      "description": "Combine the triangle sawtooth and the metallic-noise feedback rule. Changes waveform generation without patching the game CPU or slowing the game.",
+      "points": [
+        {
+          "rva": 1695387,
+          "original": "80e21f",
+          "offset": 2,
+          "value": 15,
+          "label": "Triangle sequencer wrap",
+          "original_instruction": "and dl, 0x1f",
+          "modified_instruction": "and dl, 0xf",
+          "evidence": "NesApu::Run calls/inline-runs square1, square2, noise, triangle, DMC in source order. Here TriangleChannel::Run increments sequence position, wraps at 32, and reads the 32-byte triangle waveform. The new mask keeps every index within the original table. Timer and length-counter logic unchanged."
+        },
+        {
+          "rva": 1689970,
+          "original": "b901000000",
+          "offset": 1,
+          "value": 5,
+          "label": "Normal-noise feedback tap",
+          "original_instruction": "mov ecx, 1",
+          "modified_instruction": "mov ecx, 5",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width."
+        },
+        {
+          "rva": 1689871,
+          "original": "41bc06000000",
+          "offset": 2,
+          "value": 5,
+          "label": "Short-noise feedback tap",
+          "original_instruction": "mov r12d, 6",
+          "modified_instruction": "mov r12d, 5",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "sprites_front",
+      "title": "Sprites always in front",
+      "description": "Sprites win over opaque background regardless of their priority flag. Sprite-zero-hit logic is untouched.",
+      "points": [
+        {
+          "rva": 984693,
+          "original": "7512",
+          "offset": 1,
+          "value": 0,
+          "label": "Sprite/background depth rule",
+          "original_instruction": "jne 0xf0689",
+          "modified_instruction": "jne 0xf0677",
+          "evidence": "DefaultNesPpu vtable Run at 0xefc00 contains GetPixelColor. This conditional follows the test of NesSpriteInfo.BackgroundPriority and the background-nonzero test, AFTER sprite-zero-hit logic. Swapping JNE to JE reverses the priority decision without changing branch destinations, sprite index, buffers, or timing. v6 variant: Sprites win over opaque background regardless of their priority flag. Sprite-zero-hit logic is untouched."
+        }
+      ],
+      "category": "visual"
+    },
+    {
+      "id": "sprites_behind",
+      "title": "Sprites behind scenery",
+      "description": "Opaque background always covers sprites; sprites remain visible over transparent background.",
+      "points": [
+        {
+          "rva": 984693,
+          "original": "7512",
+          "offset": 0,
+          "value": 235,
+          "label": "Sprite/background depth rule",
+          "original_instruction": "jne 0xf0689",
+          "modified_instruction": "jmp 0xf0689",
+          "evidence": "DefaultNesPpu vtable Run at 0xefc00 contains GetPixelColor. This conditional follows the test of NesSpriteInfo.BackgroundPriority and the background-nonzero test, AFTER sprite-zero-hit logic. Swapping JNE to JE reverses the priority decision without changing branch destinations, sprite index, buffers, or timing. v6 variant: Opaque background always covers sprites; sprites remain visible over transparent background."
+        }
+      ],
+      "category": "visual"
+    },
+    {
+      "id": "noise_robot",
+      "title": "Robotic percussion",
+      "description": "Both noise modes use tap 3 (seed-1 period 63), giving another repeating percussion timbre.",
+      "points": [
+        {
+          "rva": 1689970,
+          "original": "b901000000",
+          "offset": 1,
+          "value": 3,
+          "label": "Normal-noise feedback tap",
+          "original_instruction": "mov ecx, 1",
+          "modified_instruction": "mov ecx, 3",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width. v6 variant: Both noise modes use tap 3 (seed-1 period 63), giving another repeating percussion timbre."
+        },
+        {
+          "rva": 1689871,
+          "original": "41bc06000000",
+          "offset": 2,
+          "value": 3,
+          "label": "Short-noise feedback tap",
+          "original_instruction": "mov r12d, 6",
+          "modified_instruction": "mov r12d, 3",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width. v6 variant: Both noise modes use tap 3 (seed-1 period 63), giving another repeating percussion timbre."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "palette_zero",
+      "title": "Reveal palette-bank zero colors",
+      "description": "Use the palette-bank zero entry when the palette index is nonzero, even if its two color bits are zero. Depends on the game palette.",
+      "points": [
+        {
+          "rva": 984745,
+          "original": "40f6c703",
+          "offset": 3,
+          "value": 31,
+          "label": "Pixel transparency rule",
+          "original_instruction": "test dil, 3",
+          "modified_instruction": "test dil, 0x1f",
+          "evidence": "DefaultNesPpu::DrawPixel uses color&3 to choose the universal backdrop. This instruction is after sprite-zero-hit processing and layer selection; using a subset mask only changes which existing palette index or zero is selected. No index can exceed the original 0\u201331 range. v6 variant: Use the palette-bank zero entry when the palette index is nonzero, even if its two color bits are zero. Depends on the game palette."
+        }
+      ],
+      "category": "visual"
+    },
+    {
+      "id": "backdrop_invert",
+      "title": "Backdrop silhouettes",
+      "description": "Invert the final backdrop/color selection. Colored pixels become backdrop; zero-color pixels can expose palette-bank colors. Can intentionally produce a mostly blank picture.",
+      "category": "visual",
+      "points": [
+        {
+          "rva": 984762,
+          "original": "480f45c8",
+          "offset": 2,
+          "value": 68,
+          "label": "Backdrop selection",
+          "original_instruction": "cmovne rcx, rax",
+          "modified_instruction": "cmove rcx, rax",
+          "evidence": "DefaultNesPpu DrawPixel, after sprite-zero-hit and composition. Reverse selection between zero and existing palette index; both remain in 0..31. No address arithmetic or timing changes."
+        }
+      ]
+    },
+    {
+      "id": "paper_cutout",
+      "title": "Paper cutout world",
+      "description": "Sprites move in front while one color bit cuts holes in the scene.",
+      "category": "visual",
+      "points": [
+        {
+          "rva": 984693,
+          "original": "7512",
+          "offset": 1,
+          "value": 0,
+          "label": "Sprite/background depth rule",
+          "original_instruction": "jne 0xf0689",
+          "modified_instruction": "jne 0xf0677",
+          "evidence": "DefaultNesPpu vtable Run at 0xefc00 contains GetPixelColor. This conditional follows the test of NesSpriteInfo.BackgroundPriority and the background-nonzero test, AFTER sprite-zero-hit logic. Swapping JNE to JE reverses the priority decision without changing branch destinations, sprite index, buffers, or timing. v6 variant: Sprites win over opaque background regardless of their priority flag. Sprite-zero-hit logic is untouched."
+        },
+        {
+          "rva": 984745,
+          "original": "40f6c703",
+          "offset": 3,
+          "value": 1,
+          "label": "Pixel transparency rule",
+          "original_instruction": "test dil, 3",
+          "modified_instruction": "test dil, 1",
+          "evidence": "DefaultNesPpu::DrawPixel uses color&3 to choose the universal backdrop. This instruction is after sprite-zero-hit processing and layer selection; using a subset mask only changes which existing palette index or zero is selected. No index can exceed the original 0\u201331 range."
+        }
+      ]
+    },
+    {
+      "id": "inside_out",
+      "title": "Inside-out scenery",
+      "description": "Reverse sprite depth and swap adjacent tile palette timing together.",
+      "category": "visual",
+      "points": [
+        {
+          "rva": 984693,
+          "original": "7512",
+          "offset": 0,
+          "value": 116,
+          "label": "Sprite/background depth rule",
+          "original_instruction": "jne 0xf0689",
+          "modified_instruction": "je 0xf0689",
+          "evidence": "DefaultNesPpu vtable Run at 0xefc00 contains GetPixelColor. This conditional follows the test of NesSpriteInfo.BackgroundPriority and the background-nonzero test, AFTER sprite-zero-hit logic. Swapping JNE to JE reverses the priority decision without changing branch destinations, sprite index, buffers, or timing."
+        },
+        {
+          "rva": 984730,
+          "original": "0f92c0",
+          "offset": 1,
+          "value": 147,
+          "label": "Background tile palette phase",
+          "original_instruction": "setb al",
+          "modified_instruction": "setae al",
+          "evidence": "GetPixelColor background return selects previous/current tile palette based on fine scroll and dot position. SETB becomes SETAE, selecting the other of two existing palette bytes. This occurs after sprite-zero-hit logic; both indices remain bounded."
+        }
+      ]
+    },
+    {
+      "id": "robot_console",
+      "title": "Robot console",
+      "description": "Robotic percussion and sawtooth bass accompany reversed sprite depth.",
+      "category": "mixed",
+      "points": [
+        {
+          "rva": 1689970,
+          "original": "b901000000",
+          "offset": 1,
+          "value": 3,
+          "label": "Normal-noise feedback tap",
+          "original_instruction": "mov ecx, 1",
+          "modified_instruction": "mov ecx, 3",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width. v6 variant: Both noise modes use tap 3 (seed-1 period 63), giving another repeating percussion timbre."
+        },
+        {
+          "rva": 1689871,
+          "original": "41bc06000000",
+          "offset": 2,
+          "value": 3,
+          "label": "Short-noise feedback tap",
+          "original_instruction": "mov r12d, 6",
+          "modified_instruction": "mov r12d, 3",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width. v6 variant: Both noise modes use tap 3 (seed-1 period 63), giving another repeating percussion timbre."
+        },
+        {
+          "rva": 1695387,
+          "original": "80e21f",
+          "offset": 2,
+          "value": 15,
+          "label": "Triangle sequencer wrap",
+          "original_instruction": "and dl, 0x1f",
+          "modified_instruction": "and dl, 0xf",
+          "evidence": "NesApu::Run calls/inline-runs square1, square2, noise, triangle, DMC in source order. Here TriangleChannel::Run increments sequence position, wraps at 32, and reads the 32-byte triangle waveform. The new mask keeps every index within the original table. Timer and length-counter logic unchanged."
+        },
+        {
+          "rva": 984693,
+          "original": "7512",
+          "offset": 0,
+          "value": 116,
+          "label": "Sprite/background depth rule",
+          "original_instruction": "jne 0xf0689",
+          "modified_instruction": "je 0xf0689",
+          "evidence": "DefaultNesPpu vtable Run at 0xefc00 contains GetPixelColor. This conditional follows the test of NesSpriteInfo.BackgroundPriority and the background-nonzero test, AFTER sprite-zero-hit logic. Swapping JNE to JE reverses the priority decision without changing branch destinations, sprite index, buffers, or timing."
+        }
+      ]
+    },
+    {
+      "id": "sprite_spotlight",
+      "title": "Sprite spotlight",
+      "description": "Only sprite-palette pixels retain their colors; background-palette pixels become backdrop. Sprite/background overlap still follows the priority rule.",
+      "category": "visual",
+      "points": [
+        {
+          "rva": 984745,
+          "original": "40f6c703",
+          "offset": 3,
+          "value": 16,
+          "label": "Pixel transparency rule",
+          "original_instruction": "test dil, 3",
+          "modified_instruction": "test dil, 0x10",
+          "evidence": "DefaultNesPpu::DrawPixel uses color&3 to choose the universal backdrop. This instruction is after sprite-zero-hit processing and layer selection; using a subset mask only changes which existing palette index or zero is selected. No index can exceed the original 0\u201331 range. v7: Only sprite-palette pixels retain their colors; background-palette pixels become backdrop. Sprite/background overlap still follows the priority rule."
+        }
+      ]
+    },
+    {
+      "id": "palette_bands",
+      "title": "Alternating palette banks",
+      "description": "Only pixels in palette banks with bit 2 set retain their palette colors; the other banks become backdrop.",
+      "category": "visual",
+      "points": [
+        {
+          "rva": 984745,
+          "original": "40f6c703",
+          "offset": 3,
+          "value": 4,
+          "label": "Pixel transparency rule",
+          "original_instruction": "test dil, 3",
+          "modified_instruction": "test dil, 4",
+          "evidence": "DefaultNesPpu::DrawPixel uses color&3 to choose the universal backdrop. This instruction is after sprite-zero-hit processing and layer selection; using a subset mask only changes which existing palette index or zero is selected. No index can exceed the original 0\u201331 range. v7: Only pixels in palette banks with bit 2 set retain their palette colors; the other banks become backdrop."
+        }
+      ]
+    },
+    {
+      "id": "palette_early",
+      "title": "Early tile palette handoff",
+      "description": "Move the previous/current tile palette boundary from 8 to 4. Produces different palette streaks at scrolling tile edges; does not change PPU clocks.",
+      "category": "visual",
+      "points": [
+        {
+          "rva": 984727,
+          "original": "83f908",
+          "offset": 2,
+          "value": 4,
+          "label": "Tile palette boundary",
+          "original_instruction": "cmp ecx, 8",
+          "modified_instruction": "cmp ecx, 4",
+          "evidence": "DefaultNesPpu DrawPixel: CMP ECX,8 feeds SETB AL, selecting only palette slot 0 or 1. A changed threshold cannot increase the table index."
+        }
+      ]
+    },
+    {
+      "id": "palette_late",
+      "title": "Late tile palette handoff",
+      "description": "Move the previous/current tile palette boundary from 8 to 12. Produces different palette streaks at scrolling tile edges; does not change PPU clocks.",
+      "category": "visual",
+      "points": [
+        {
+          "rva": 984727,
+          "original": "83f908",
+          "offset": 2,
+          "value": 12,
+          "label": "Tile palette boundary",
+          "original_instruction": "cmp ecx, 8",
+          "modified_instruction": "cmp ecx, 0xc",
+          "evidence": "DefaultNesPpu DrawPixel: CMP ECX,8 feeds SETB AL, selecting only palette slot 0 or 1. A changed threshold cannot increase the table index."
+        }
+      ]
+    },
+    {
+      "id": "palette_cadence",
+      "title": "Half-tile palette cadence",
+      "description": "Fold the fine horizontal pixel phase to four steps instead of eight before choosing the tile palette. Most visible with scrolling and varied neighboring palettes.",
+      "category": "visual",
+      "points": [
+        {
+          "rva": 984721,
+          "original": "83e107",
+          "offset": 2,
+          "value": 3,
+          "label": "Fine pixel phase mask",
+          "original_instruction": "and ecx, 7",
+          "modified_instruction": "and ecx, 3",
+          "evidence": "DefaultNesPpu DrawPixel: AND ECX,7 precedes adding fine X and CMP/SETB. Only the palette choice changes; final AL remains boolean."
+        }
+      ]
+    },
+    {
+      "id": "triangle_rising",
+      "title": "Rising sawtooth bass",
+      "description": "Run the first 16 triangle samples in reverse, producing a rising sawtooth instead of the descending variant. Audible character depends on the music and mixer.",
+      "category": "audio",
+      "points": [
+        {
+          "rva": 1695385,
+          "original": "fec2",
+          "offset": 1,
+          "value": 202,
+          "label": "Reverse triangle sequencer",
+          "original_instruction": "inc dl",
+          "modified_instruction": "dec dl",
+          "evidence": "INC DL becomes DEC DL; the following mask is patched to 15 in the same preset, keeping all indices in the original 32-byte table."
+        },
+        {
+          "rva": 1695387,
+          "original": "80e21f",
+          "offset": 2,
+          "value": 15,
+          "label": "Triangle sequencer wrap",
+          "original_instruction": "and dl, 0x1f",
+          "modified_instruction": "and dl, 0xf",
+          "evidence": "NesApu::Run calls/inline-runs square1, square2, noise, triangle, DMC in source order. Here TriangleChannel::Run increments sequence position, wraps at 32, and reads the 32-byte triangle waveform. The new mask keeps every index within the original table. Timer and length-counter logic unchanged."
+        }
+      ]
+    },
+    {
+      "id": "noise_hollow",
+      "title": "Hollow repeating percussion",
+      "description": "Both noise modes use feedback tap 9 (seed-1 period 93). A different recurrence for repeating noise-channel tones; game and current register state affect the result.",
+      "category": "audio",
+      "points": [
+        {
+          "rva": 1689970,
+          "original": "b901000000",
+          "offset": 1,
+          "value": 9,
+          "label": "Normal-noise feedback tap",
+          "original_instruction": "mov ecx, 1",
+          "modified_instruction": "mov ecx, 9",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width. v7: Both noise modes use feedback tap 9 (seed-1 period 93). A different recurrence for repeating noise-channel tones; game and current register state affect the result."
+        },
+        {
+          "rva": 1689871,
+          "original": "41bc06000000",
+          "offset": 2,
+          "value": 9,
+          "label": "Short-noise feedback tap",
+          "original_instruction": "mov r12d, 6",
+          "modified_instruction": "mov r12d, 9",
+          "evidence": "NesApu::Run direct call to NoiseChannel::Run at 0x19c8f0; source feedback is bit0 XOR bit1/bit6 shifted into bit14. The selected constant chooses the feedback tap, not timing, addresses, or array indices. Tap5 changes the recurrence; no change to its 15-bit width. v7: Both noise modes use feedback tap 9 (seed-1 period 93). A different recurrence for repeating noise-channel tones; game and current register state affect the result."
+        }
+      ]
+    },
+    {
+      "id": "pulse_crosswire",
+      "title": "Crosswired pulse waves",
+      "description": "Read the pulse table as duty + phase*4. Creates new duty patterns, including irregular pulse shapes. Affects both melody channels that use this routine.",
+      "points": [
+        {
+          "rva": 1687538,
+          "original": "488d14c8",
+          "offset": 3,
+          "value": 129,
+          "label": "Pulse waveform lookup",
+          "original_instruction": "lea rdx, [rax + rcx*8]",
+          "modified_instruction": "lea rdx, [rcx + rax*4]",
+          "evidence": "SquareChannel::UpdateOutput at 0x19BFA0: phase EAX is 0..7, duty ECX is 0..3. Original LEA forms phase+duty*8. The replacement stays within the original 32-byte 0/1 duty table at RVA 0x5F0670. Envelope output remains 0..15 and timer progress is unchanged. This shared routine can also affect callers using SquareChannel for expansion audio. New range 0..31."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "pulse_double",
+      "title": "Double-pulse melody",
+      "description": "Read the pulse table at phase*3, ignoring duty selection. Produces the eight-step pattern 00000101 on both pulse channels.",
+      "points": [
+        {
+          "rva": 1687538,
+          "original": "488d14c8",
+          "offset": 3,
+          "value": 64,
+          "label": "Pulse waveform lookup",
+          "original_instruction": "lea rdx, [rax + rcx*8]",
+          "modified_instruction": "lea rdx, [rax + rax*2]",
+          "evidence": "SquareChannel::UpdateOutput at 0x19BFA0: phase EAX is 0..7, duty ECX is 0..3. Original LEA forms phase+duty*8. The replacement stays within the original 32-byte 0/1 duty table at RVA 0x5F0670. Envelope output remains 0..15 and timer progress is unchanged. This shared routine can also affect callers using SquareChannel for expansion audio. New range 0..21."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "pulse_narrow",
+      "title": "Needle-thin melody",
+      "description": "Read the pulse table at phase*2, ignoring duty selection. Locks both pulse channels to the narrow pattern 00000001.",
+      "points": [
+        {
+          "rva": 1687538,
+          "original": "488d14c8",
+          "offset": 3,
+          "value": 0,
+          "label": "Pulse waveform lookup",
+          "original_instruction": "lea rdx, [rax + rcx*8]",
+          "modified_instruction": "lea rdx, [rax + rax]",
+          "evidence": "SquareChannel::UpdateOutput at 0x19BFA0: phase EAX is 0..7, duty ECX is 0..3. Original LEA forms phase+duty*8. The replacement stays within the original 32-byte 0/1 duty table at RVA 0x5F0670. Envelope output remains 0..15 and timer progress is unchanged. This shared routine can also affect callers using SquareChannel for expansion audio. New range 0..14."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "pulse1_skip",
+      "title": "Pulse 1 skips alternate steps",
+      "description": "Restrict this pulse sequencer to even positions: 6, 4, 2, 0. This halves the sequence period, changing pitch and duty shape. Narrow original duty can become silent; combine with Crosswired pulse waves for more varied results.",
+      "points": [
+        {
+          "rva": 1695207,
+          "original": "2407",
+          "offset": 1,
+          "value": 6,
+          "label": "Pulse sequencer phase mask",
+          "original_instruction": "and al, 7",
+          "modified_instruction": "and al, 6",
+          "evidence": "NesApu::Run inlined SquareChannel::Run. DEC AL followed by AND AL,7 becomes AND AL,6. Every input byte maps to 0,2,4,6, remaining within the eight-entry phase range. Timer stepping, event-loop exit and output buffering are unchanged."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "pulse2_skip",
+      "title": "Pulse 2 skips alternate steps",
+      "description": "Restrict this pulse sequencer to even positions: 6, 4, 2, 0. This halves the sequence period, changing pitch and duty shape. Narrow original duty can become silent; combine with Crosswired pulse waves for more varied results.",
+      "points": [
+        {
+          "rva": 1695287,
+          "original": "2407",
+          "offset": 1,
+          "value": 6,
+          "label": "Pulse sequencer phase mask",
+          "original_instruction": "and al, 7",
+          "modified_instruction": "and al, 6",
+          "evidence": "NesApu::Run inlined SquareChannel::Run. DEC AL followed by AND AL,7 becomes AND AL,6. Every input byte maps to 0,2,4,6, remaining within the eight-entry phase range. Timer stepping, event-loop exit and output buffering are unchanged."
+        }
+      ],
+      "category": "audio"
+    },
+    {
+      "id": "sprites_background_ink",
+      "title": "Sprites borrow background ink",
+      "description": "Use the sprite priority flag as a tiny color offset instead of its sprite palette bank. Sprites use background palette colors, with some pixels turning transparent. This happens after sprite-zero-hit processing.",
+      "points": [
+        {
+          "rva": 984703,
+          "original": "4002bc01d4010000",
+          "offset": 4,
+          "value": 208,
+          "label": "Sprite palette source",
+          "original_instruction": "add dil, byte ptr [rcx + rax + 0x1d4]",
+          "modified_instruction": "add dil, byte ptr [rcx + rax + 0x1d0]",
+          "evidence": "DefaultNesPpu GetPixelColor composition: sprite object base is RBX + index*5 + 0x1D0. Offset 0 is boolean BackgroundPriority; offset 4 is PaletteOffset. Existing CMP at 0xF066D confirms that same boolean field. Reading this field instead of PaletteOffset yields spriteColor(1..3)+priority(0..1), hence palette index 1..4; no object or table bounds change."
+        }
+      ],
+      "category": "visual"
+    },
+    {
+      "id": "controls_mirror",
+      "title": "Left and right reverse",
+      "description": "Left produces Right and Right produces Left for the duration of the burst. Applies to standard NES controller reports, potentially both players. Start and Select are unchanged.",
+      "category": "input",
+      "points": [
+        {
+          "rva": 1699595,
+          "original": "b202",
+          "offset": 1,
+          "value": 3,
+          "label": "Left report input",
+          "original_instruction": "mov dl, 2",
+          "modified_instruction": "mov dl, 3",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        },
+        {
+          "rva": 1699608,
+          "original": "b203",
+          "offset": 1,
+          "value": 2,
+          "label": "Right report input",
+          "original_instruction": "mov dl, 3",
+          "modified_instruction": "mov dl, 2",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        }
+      ],
+      "report_mapping": {
+        "Left": 3,
+        "Right": 2
+      }
+    },
+    {
+      "id": "controls_ab",
+      "title": "A and B reverse",
+      "description": "Exchange the two action buttons. Which actions change depends on the game. Applies to standard NES controller reports, potentially both players. Start and Select are unchanged.",
+      "category": "input",
+      "points": [
+        {
+          "rva": 1699516,
+          "original": "b207",
+          "offset": 1,
+          "value": 6,
+          "label": "A report input",
+          "original_instruction": "mov dl, 7",
+          "modified_instruction": "mov dl, 6",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        },
+        {
+          "rva": 1699526,
+          "original": "b206",
+          "offset": 1,
+          "value": 7,
+          "label": "B report input",
+          "original_instruction": "mov dl, 6",
+          "modified_instruction": "mov dl, 7",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        }
+      ],
+      "report_mapping": {
+        "A": 6,
+        "B": 7
+      }
+    },
+    {
+      "id": "controls_a_right",
+      "title": "A and Right exchange",
+      "description": "A produces Right; Right produces A. Movement and an action exchange roles. Applies to standard NES controller reports, potentially both players. Start and Select are unchanged.",
+      "category": "input",
+      "points": [
+        {
+          "rva": 1699516,
+          "original": "b207",
+          "offset": 1,
+          "value": 3,
+          "label": "A report input",
+          "original_instruction": "mov dl, 7",
+          "modified_instruction": "mov dl, 3",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        },
+        {
+          "rva": 1699608,
+          "original": "b203",
+          "offset": 1,
+          "value": 7,
+          "label": "Right report input",
+          "original_instruction": "mov dl, 3",
+          "modified_instruction": "mov dl, 7",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        }
+      ],
+      "report_mapping": {
+        "A": 3,
+        "Right": 7
+      }
+    },
+    {
+      "id": "controls_b_left",
+      "title": "B and Left exchange",
+      "description": "B produces Left; Left produces B. Applies to standard NES controller reports, potentially both players. Start and Select are unchanged.",
+      "category": "input",
+      "points": [
+        {
+          "rva": 1699526,
+          "original": "b206",
+          "offset": 1,
+          "value": 2,
+          "label": "B report input",
+          "original_instruction": "mov dl, 6",
+          "modified_instruction": "mov dl, 2",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        },
+        {
+          "rva": 1699595,
+          "original": "b202",
+          "offset": 1,
+          "value": 6,
+          "label": "Left report input",
+          "original_instruction": "mov dl, 2",
+          "modified_instruction": "mov dl, 6",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        }
+      ],
+      "report_mapping": {
+        "B": 2,
+        "Left": 6
+      }
+    },
+    {
+      "id": "controls_b_down",
+      "title": "B and Down exchange",
+      "description": "B produces Down; Down produces B. Applies to standard NES controller reports, potentially both players. Start and Select are unchanged.",
+      "category": "input",
+      "points": [
+        {
+          "rva": 1699526,
+          "original": "b206",
+          "offset": 1,
+          "value": 1,
+          "label": "B report input",
+          "original_instruction": "mov dl, 6",
+          "modified_instruction": "mov dl, 1",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        },
+        {
+          "rva": 1699582,
+          "original": "b201",
+          "offset": 1,
+          "value": 6,
+          "label": "Down report input",
+          "original_instruction": "mov dl, 1",
+          "modified_instruction": "mov dl, 6",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        }
+      ],
+      "report_mapping": {
+        "B": 1,
+        "Down": 6
+      }
+    },
+    {
+      "id": "controls_diagonal",
+      "title": "Vertical input becomes diagonal",
+      "description": "Up produces Up+Left; Down produces Down+Right. Physical Left/Right no longer control those two output bits. Applies to standard NES controller reports, potentially both players. Start and Select are unchanged.",
+      "category": "input",
+      "points": [
+        {
+          "rva": 1699595,
+          "original": "b202",
+          "offset": 1,
+          "value": 0,
+          "label": "Left report input",
+          "original_instruction": "mov dl, 2",
+          "modified_instruction": "mov dl, 0",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        },
+        {
+          "rva": 1699608,
+          "original": "b203",
+          "offset": 1,
+          "value": 1,
+          "label": "Right report input",
+          "original_instruction": "mov dl, 3",
+          "modified_instruction": "mov dl, 1",
+          "evidence": "NesController::RefreshStateBuffer at 0x19ED50 calls ToByte at 0x19EEA0 and stores AL at object+0x60. ReadRam at 0x19EF70 shifts that report out. ToByte calls IsPressed at 0xE3240 with button IDs, then packs A,B,Select,Start,Up,Down,Left,Right. These changes alter only MOV DL,imm8 button selections (IDs 0..7); packing, strobe and serial shifting stay unchanged. Applies to all standard controllers using this shared routine."
+        }
+      ],
+      "report_mapping": {
+        "Left": 0,
+        "Right": 1
+      }
+    },
+    {
+      "id": "dmc_soft",
+      "title": "DMC smaller decoding steps",
+      "description": "Use +/-1 instead of +/-2 per decoded bit. Changes sample shape and level excursion without changing playback rate. Audible only while the game uses DMC sampled audio; pulse/triangle/noise synthesis is unaffected directly.",
+      "category": "audio",
+      "subsystem": "dmc",
+      "points": [
+        {
+          "rva": 4238251,
+          "original": "80c102",
+          "offset": 2,
+          "value": 1,
+          "label": "DMC upward step",
+          "original_instruction": "add cl, 2",
+          "modified_instruction": "add cl, 1",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        },
+        {
+          "rva": 4238261,
+          "original": "80e902",
+          "offset": 2,
+          "value": 1,
+          "label": "DMC downward step",
+          "original_instruction": "sub cl, 2",
+          "modified_instruction": "sub cl, 1",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        }
+      ]
+    },
+    {
+      "id": "dmc_rise",
+      "title": "DMC upward-biased samples",
+      "description": "Keep +2 upward steps but use -1 downward steps. Sample level tends to drift upward and clip differently. Audible only while the game uses DMC sampled audio; pulse/triangle/noise synthesis is unaffected directly.",
+      "category": "audio",
+      "subsystem": "dmc",
+      "points": [
+        {
+          "rva": 4238261,
+          "original": "80e902",
+          "offset": 2,
+          "value": 1,
+          "label": "DMC downward step",
+          "original_instruction": "sub cl, 2",
+          "modified_instruction": "sub cl, 1",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        }
+      ]
+    },
+    {
+      "id": "dmc_fall",
+      "title": "DMC downward-biased samples",
+      "description": "Use +1 upward steps but keep -2 downward steps. Sample level tends to drift downward and clip differently. Audible only while the game uses DMC sampled audio; pulse/triangle/noise synthesis is unaffected directly.",
+      "category": "audio",
+      "subsystem": "dmc",
+      "points": [
+        {
+          "rva": 4238251,
+          "original": "80c102",
+          "offset": 2,
+          "value": 1,
+          "label": "DMC upward step",
+          "original_instruction": "add cl, 2",
+          "modified_instruction": "add cl, 1",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        }
+      ]
+    },
+    {
+      "id": "dmc_invert",
+      "title": "DMC inverted bit meaning",
+      "description": "Exchange which sample bits request an upward versus downward step. This is delta polarity inversion, not reversing sample playback. Audible only while the game uses DMC sampled audio; pulse/triangle/noise synthesis is unaffected directly.",
+      "category": "audio",
+      "subsystem": "dmc",
+      "points": [
+        {
+          "rva": 4238244,
+          "original": "740a",
+          "offset": 0,
+          "value": 117,
+          "label": "DMC bit decision",
+          "original_instruction": "je 0x40abb0",
+          "modified_instruction": "jne 0x40abb0",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        }
+      ]
+    },
+    {
+      "id": "dmc_reverse",
+      "title": "DMC reversed bit order",
+      "description": "Reverse the order of bits within each sample byte relative to the emulator setting. Byte order and sample duration stay unchanged. Audible only while the game uses DMC sampled audio; pulse/triangle/noise synthesis is unaffected directly.",
+      "category": "audio",
+      "subsystem": "dmc",
+      "points": [
+        {
+          "rva": 4238222,
+          "original": "0f44c8",
+          "offset": 1,
+          "value": 69,
+          "label": "DMC shift direction selection",
+          "original_instruction": "cmove ecx, eax",
+          "modified_instruction": "cmovne ecx, eax",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        },
+        {
+          "rva": 4238230,
+          "original": "410f44c4",
+          "offset": 2,
+          "value": 69,
+          "label": "DMC bit mask selection",
+          "original_instruction": "cmove eax, r12d",
+          "modified_instruction": "cmovne eax, r12d",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        }
+      ]
+    },
+    {
+      "id": "dmc_buzz",
+      "title": "DMC two-level buzz",
+      "description": "Replace upward and downward arithmetic with XOR 2 under the existing guards. The decoder tends to toggle between two nearby levels, turning sample detail into a repetitive buzz. Audible only while the game uses DMC sampled audio; pulse/triangle/noise synthesis is unaffected directly.",
+      "category": "audio",
+      "subsystem": "dmc",
+      "points": [
+        {
+          "rva": 4238251,
+          "original": "80c102",
+          "offset": 1,
+          "value": 241,
+          "label": "DMC upward XOR step",
+          "original_instruction": "add cl, 2",
+          "modified_instruction": "xor cl, 2",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        },
+        {
+          "rva": 4238261,
+          "original": "80e902",
+          "offset": 1,
+          "value": 241,
+          "label": "DMC downward XOR step",
+          "original_instruction": "sub cl, 2",
+          "modified_instruction": "xor cl, 2",
+          "evidence": "DeltaModulationChannel::Run at RVA 0x40AB00, directly called from NesApu::Run. Exact source matches reverse-bit-order selection, bit test, bounded +/-2 output update, then bit counter and DMA bookkeeping. Only the listed decoder operations change. Level guards stay <=125 for upward and >=2 for downward operations; all replacement arithmetic maps valid levels into 0..127. Sample addressing, timer, buffer refill, DMA and interrupt code are untouched."
+        }
+      ]
+    },
+    {
+      "id": "env_pulse1_fast",
+      "title": "Pulse 1 fast fades",
+      "description": "Subtract four from this envelope divider per tick instead of one. Shortens automatic fades and accelerates looping envelopes. Fixed-volume passages may be unchanged.",
+      "category": "audio",
+      "subsystem": "envelope",
+      "points": [
+        {
+          "rva": 1693442,
+          "original": "4180682301",
+          "offset": 4,
+          "value": 4,
+          "label": "Envelope divider speed",
+          "original_instruction": "sub byte ptr [r8 + 0x23], 1",
+          "modified_instruction": "sub byte ptr [r8 + 0x23], 4",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. A valid 0..15 divider becomes -4..11; negative values immediately reload from volume. Counter decrement remains guarded above zero."
+        }
+      ]
+    },
+    {
+      "id": "env_pulse2_fast",
+      "title": "Pulse 2 fast fades",
+      "description": "Subtract four from this envelope divider per tick instead of one. Shortens automatic fades and accelerates looping envelopes. Fixed-volume passages may be unchanged.",
+      "category": "audio",
+      "subsystem": "envelope",
+      "points": [
+        {
+          "rva": 1693513,
+          "original": "80692301",
+          "offset": 3,
+          "value": 4,
+          "label": "Envelope divider speed",
+          "original_instruction": "sub byte ptr [rcx + 0x23], 1",
+          "modified_instruction": "sub byte ptr [rcx + 0x23], 4",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. A valid 0..15 divider becomes -4..11; negative values immediately reload from volume. Counter decrement remains guarded above zero."
+        }
+      ]
+    },
+    {
+      "id": "env_noise_fast",
+      "title": "Noise fast fades",
+      "description": "Subtract four from this envelope divider per tick instead of one. Shortens automatic fades and accelerates looping envelopes. Fixed-volume passages may be unchanged.",
+      "category": "audio",
+      "subsystem": "envelope",
+      "points": [
+        {
+          "rva": 1693613,
+          "original": "80692301",
+          "offset": 3,
+          "value": 4,
+          "label": "Envelope divider speed",
+          "original_instruction": "sub byte ptr [rcx + 0x23], 1",
+          "modified_instruction": "sub byte ptr [rcx + 0x23], 4",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. A valid 0..15 divider becomes -4..11; negative values immediately reload from volume. Counter decrement remains guarded above zero."
+        }
+      ]
+    },
+    {
+      "id": "env_pulse_mode",
+      "title": "Pulse volume modes exchange",
+      "description": "Pulse channels use the decay counter where the game requested fixed volume, and fixed volume where it requested the decay counter. Can turn steady notes into fades or remove existing fades.",
+      "category": "audio",
+      "subsystem": "envelope",
+      "points": [
+        {
+          "rva": 1687511,
+          "original": "7407",
+          "offset": 0,
+          "value": 117,
+          "label": "Pulse volume source",
+          "original_instruction": "je 0x19bfe0",
+          "modified_instruction": "jne 0x19bfe0",
+          "evidence": "SquareChannel::UpdateOutput compares constantVolume at +0x20 then chooses +0x21 fixed volume or +0x24 envelope counter. Swapping JE to JNE exchanges these bounded 0..15 sources. Existing length/mute guards remain."
+        }
+      ]
+    },
+    {
+      "id": "env_noise_mode",
+      "title": "Noise volume modes exchange",
+      "description": "Swap fixed-volume and automatic-envelope output for noise percussion. Combine with Noise fast fades to change its articulation.",
+      "category": "audio",
+      "subsystem": "envelope",
+      "points": [
+        {
+          "rva": 1690092,
+          "original": "7406",
+          "offset": 0,
+          "value": 117,
+          "label": "Noise volume source",
+          "original_instruction": "je 0x19c9f4",
+          "modified_instruction": "jne 0x19c9f4",
+          "evidence": "NoiseChannel::Run chooses +0x21 fixed volume or +0x24 envelope counter after checking length and noise output state. JE becomes JNE, exchanging bounded sources without changing generator timing."
+        }
+      ]
+    },
+    {
+      "id": "env_short",
+      "title": "Short envelope cycles",
+      "description": "Pulse and noise envelope resets/loops start at 7 instead of 15. Reduces the peak and shortens the decay cycle. Audible when the decay counter supplies volume.",
+      "category": "audio",
+      "subsystem": "envelope",
+      "points": [
+        {
+          "rva": 1693498,
+          "original": "41c640240f",
+          "offset": 4,
+          "value": 7,
+          "label": "Envelope reset height",
+          "original_instruction": "mov byte ptr [r8 + 0x24], 0xf",
+          "modified_instruction": "mov byte ptr [r8 + 0x24], 7",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. The shared reset/loop constant becomes 7; existing counters may stay above 7 until the next reset, but remain within 0..15."
+        },
+        {
+          "rva": 1693560,
+          "original": "c641240f",
+          "offset": 3,
+          "value": 7,
+          "label": "Envelope reset height",
+          "original_instruction": "mov byte ptr [rcx + 0x24], 0xf",
+          "modified_instruction": "mov byte ptr [rcx + 0x24], 7",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. The shared reset/loop constant becomes 7; existing counters may stay above 7 until the next reset, but remain within 0..15."
+        },
+        {
+          "rva": 1693660,
+          "original": "c641240f",
+          "offset": 3,
+          "value": 7,
+          "label": "Envelope reset height",
+          "original_instruction": "mov byte ptr [rcx + 0x24], 0xf",
+          "modified_instruction": "mov byte ptr [rcx + 0x24], 7",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. The shared reset/loop constant becomes 7; existing counters may stay above 7 until the next reset, but remain within 0..15."
+        }
+      ]
+    },
+    {
+      "id": "env_freeze",
+      "title": "Frozen fades",
+      "description": "Hold pulse/noise decay counters between resets instead of decreasing them. Notes still stop when the original channel length or mute rules require it. Fixed-volume output is unaffected.",
+      "category": "audio",
+      "subsystem": "envelope",
+      "points": [
+        {
+          "rva": 1693467,
+          "original": "fec8",
+          "offset": 1,
+          "value": 204,
+          "label": "Envelope decrement destination",
+          "original_instruction": "dec al",
+          "modified_instruction": "dec ah",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. DEC AL becomes DEC AH. AL still contains the unchanged bounded envelope counter and is stored as before. AH is dead after this point: later channel processing reloads EAX, and the method returns void. DEC flags are not consumed before the next CMP. This preserves AL without a multi-byte instruction rewrite."
+        },
+        {
+          "rva": 1693534,
+          "original": "fec8",
+          "offset": 1,
+          "value": 204,
+          "label": "Envelope decrement destination",
+          "original_instruction": "dec al",
+          "modified_instruction": "dec ah",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. DEC AL becomes DEC AH. AL still contains the unchanged bounded envelope counter and is stored as before. AH is dead after this point: later channel processing reloads EAX, and the method returns void. DEC flags are not consumed before the next CMP. This preserves AL without a multi-byte instruction rewrite."
+        },
+        {
+          "rva": 1693634,
+          "original": "fec8",
+          "offset": 1,
+          "value": 204,
+          "label": "Envelope decrement destination",
+          "original_instruction": "dec al",
+          "modified_instruction": "dec ah",
+          "evidence": "NesApu::FrameCounterTick at 0x19D6F0 matches source order pulse1, pulse2, triangle linear counter, noise, followed by the half-frame length/sweep section. ApuEnvelope fields at channel+0x21/22/23/24 hold volume, start, signed divider, counter. Normal counter is 0..15; divider reload is volume 0..15. Only the described envelope operation changes; channel length counters and frame-clock frequency are untouched. DEC AL becomes DEC AH. AL still contains the unchanged bounded envelope counter and is stored as before. AH is dead after this point: later channel processing reloads EAX, and the method returns void. DEC flags are not consumed before the next CMP. This preserves AL without a multi-byte instruction rewrite."
+        }
+      ]
+    },
+    {
+      "id": "plane_low_offset",
+      "title": "low bitplane offset",
+      "category": "visual",
+      "subsystem": "bitplanes",
+      "description": "Sample one background plane at a one-bit offset. Splits tile color detail without changing ROM data. Can change sprite-zero-hit timing and break games that depend on it. Restoring code does not undo gameplay.",
+      "points": [
+        {
+          "rva": 984139,
+          "original": "41c1fb0f",
+          "offset": 3,
+          "value": 14,
+          "label": "Background bitplane sampling",
+          "original_instruction": "sar r11d, 0xf",
+          "modified_instruction": "sar r11d, 0xe",
+          "evidence": "DefaultNesPpu::Run inlined GetPixelColor. Shifted words are masked to bits 0/1 before OR; result stays 0..3. Also feeds sprite-zero-hit detection; gameplay compatibility is not assured."
+        }
+      ]
+    },
+    {
+      "id": "plane_high_offset",
+      "title": "high bitplane offset",
+      "category": "visual",
+      "subsystem": "bitplanes",
+      "description": "Sample one background plane at a one-bit offset. Splits tile color detail without changing ROM data. Can change sprite-zero-hit timing and break games that depend on it. Restoring code does not undo gameplay.",
+      "points": [
+        {
+          "rva": 984143,
+          "original": "c1f80e",
+          "offset": 2,
+          "value": 15,
+          "label": "Background bitplane sampling",
+          "original_instruction": "sar eax, 0xe",
+          "modified_instruction": "sar eax, 0xf",
+          "evidence": "DefaultNesPpu::Run inlined GetPixelColor. Shifted words are masked to bits 0/1 before OR; result stays 0..3. Also feeds sprite-zero-hit detection; gameplay compatibility is not assured."
+        }
+      ]
+    },
+    {
+      "id": "plane_split",
+      "title": "opposed bitplanes",
+      "category": "visual",
+      "subsystem": "bitplanes",
+      "description": "Sample both background planes at opposing one-bit offsets. Splits tile color detail without changing ROM data. Can change sprite-zero-hit timing and break games that depend on it. Restoring code does not undo gameplay.",
+      "points": [
+        {
+          "rva": 984139,
+          "original": "41c1fb0f",
+          "offset": 3,
+          "value": 14,
+          "label": "Background bitplane sampling",
+          "original_instruction": "sar r11d, 0xf",
+          "modified_instruction": "sar r11d, 0xe",
+          "evidence": "DefaultNesPpu::Run inlined GetPixelColor. Shifted words are masked to bits 0/1 before OR; result stays 0..3. Also feeds sprite-zero-hit detection; gameplay compatibility is not assured."
+        },
+        {
+          "rva": 984143,
+          "original": "c1f80e",
+          "offset": 2,
+          "value": 15,
+          "label": "Background bitplane sampling",
+          "original_instruction": "sar eax, 0xe",
+          "modified_instruction": "sar eax, 0xf",
+          "evidence": "DefaultNesPpu::Run inlined GetPixelColor. Shifted words are masked to bits 0/1 before OR; result stays 0..3. Also feeds sprite-zero-hit detection; gameplay compatibility is not assured."
+        }
+      ]
+    },
+    {
+      "id": "sprite_scramble",
+      "title": "Scrambled mirrored sprite rows",
+      "category": "visual",
+      "subsystem": "sprite_pixels",
+      "description": "Permute pixels within horizontally mirrored sprite rows; both planes move together. Sprite positions and pattern fetch addresses stay unchanged. Unmirrored sprites are unaffected. Can alter sprite-zero hits.",
+      "points": [
+        {
+          "rva": 1651405,
+          "original": "c0c804",
+          "offset": 2,
+          "value": 2,
+          "label": "Mirrored sprite row permutation",
+          "original_instruction": "ror al, 4",
+          "modified_instruction": "ror al, 2",
+          "evidence": "LoadSprite bit reversal, after pattern reads and in-range check. Changing the initial nibble rotation permutes the eight bits of the row; all subsequent stores and sprite coordinates stay unchanged. Only horizontal-mirror path. May alter sprite-zero hits."
+        },
+        {
+          "rva": 1651411,
+          "original": "c0cb04",
+          "offset": 2,
+          "value": 2,
+          "label": "Mirrored sprite row permutation",
+          "original_instruction": "ror bl, 4",
+          "modified_instruction": "ror bl, 2",
+          "evidence": "LoadSprite bit reversal, after pattern reads and in-range check. Changing the initial nibble rotation permutes the eight bits of the row; all subsequent stores and sprite coordinates stay unchanged. Only horizontal-mirror path. May alter sprite-zero hits."
+        }
+      ]
+    },
+    {
+      "id": "sprite_fracture",
+      "title": "Fractured mirrored sprite planes",
+      "category": "visual",
+      "subsystem": "sprite_pixels",
+      "description": "Permute pixels within horizontally mirrored sprite rows; the two planes move differently. Sprite positions and pattern fetch addresses stay unchanged. Unmirrored sprites are unaffected. Can alter sprite-zero hits.",
+      "points": [
+        {
+          "rva": 1651405,
+          "original": "c0c804",
+          "offset": 2,
+          "value": 2,
+          "label": "Mirrored sprite row permutation",
+          "original_instruction": "ror al, 4",
+          "modified_instruction": "ror al, 2",
+          "evidence": "LoadSprite bit reversal, after pattern reads and in-range check. Changing the initial nibble rotation permutes the eight bits of the row; all subsequent stores and sprite coordinates stay unchanged. Only horizontal-mirror path. May alter sprite-zero hits."
+        },
+        {
+          "rva": 1651411,
+          "original": "c0cb04",
+          "offset": 2,
+          "value": 6,
+          "label": "Mirrored sprite row permutation",
+          "original_instruction": "ror bl, 4",
+          "modified_instruction": "ror bl, 6",
+          "evidence": "LoadSprite bit reversal, after pattern reads and in-range check. Changing the initial nibble rotation permutes the eight bits of the row; all subsequent stores and sprite coordinates stay unchanged. Only horizontal-mirror path. May alter sprite-zero hits."
+        }
+      ]
+    },
+    {
+      "id": "pulse1_four",
+      "title": "Pulse 1 four-step melody",
+      "description": "Restrict this pulse sequencer to 3,2,1,0. Halves its sequence period and changes duty shape. Some duty/lookup combinations become constant or silent; game tempo and channel timers are unchanged.",
+      "category": "audio",
+      "points": [
+        {
+          "rva": 1695207,
+          "original": "2407",
+          "offset": 1,
+          "value": 3,
+          "label": "Four-step pulse sequence",
+          "original_instruction": "and al, 7",
+          "modified_instruction": "and al, 3",
+          "evidence": "Original DEC AL followed by AND AL,7. Mask3 bounds every input byte to0..3, inside the original phase table. Changes no loop exit or timing arithmetic."
+        }
+      ]
+    },
+    {
+      "id": "pulse2_four",
+      "title": "Pulse 2 four-step melody",
+      "description": "Restrict this pulse sequencer to 3,2,1,0. Halves its sequence period and changes duty shape. Some duty/lookup combinations become constant or silent; game tempo and channel timers are unchanged.",
+      "category": "audio",
+      "points": [
+        {
+          "rva": 1695287,
+          "original": "2407",
+          "offset": 1,
+          "value": 3,
+          "label": "Four-step pulse sequence",
+          "original_instruction": "and al, 7",
+          "modified_instruction": "and al, 3",
+          "evidence": "Original DEC AL followed by AND AL,7. Mask3 bounds every input byte to0..3, inside the original phase table. Changes no loop exit or timing arithmetic."
+        }
+      ]
+    },
+    {
+      "id": "triangle_four",
+      "title": "Four-step triangle bass",
+      "description": "Cycle through the first four triangle samples rather than 32. Shortens the sequence and reduces its level excursion; can sound thinner or quieter, not necessarily louder. Timers and game tempo are unchanged.",
+      "category": "audio",
+      "points": [
+        {
+          "rva": 1695387,
+          "original": "80e21f",
+          "offset": 2,
+          "value": 3,
+          "label": "Four-step triangle wrap",
+          "original_instruction": "and dl, 0x1f",
+          "modified_instruction": "and dl, 3",
+          "evidence": "Original INC DL followed by AND DL,31. Mask3 bounds all states to0..3 in the original waveform table."
+        }
+      ]
+    },
+    {
+      "id": "noise_long_repeat",
+      "title": "Long repeating percussion",
+      "description": "Use noise feedback tap 2 in both noise modes. The seed-1 sequence repeats after 4599 steps, between the short repeating patterns and original long noise. Other starting states can have different periods; audible difference depends on the game.",
+      "category": "audio",
+      "points": [
+        {
+          "rva": 1689970,
+          "original": "b901000000",
+          "offset": 1,
+          "value": 2,
+          "label": "Normal-noise feedback tap",
+          "original_instruction": "mov ecx, 1",
+          "modified_instruction": "mov ecx, 2",
+          "evidence": "Original 15-bit feedback recurrence; only the tap changes. No address, timer, width or loop-exit change."
+        },
+        {
+          "rva": 1689871,
+          "original": "41bc06000000",
+          "offset": 2,
+          "value": 2,
+          "label": "Short-noise feedback tap",
+          "original_instruction": "mov r12d, 6",
+          "modified_instruction": "mov r12d, 2",
+          "evidence": "Same tap2 selected for short mode. Feedback remains bit0 XOR bit2, inserted at bit14."
+        }
+      ]
+    },
+    {
+      "id": "controls_a_down",
+      "title": "A and Down exchange",
+      "description": "Physical Down becomes A; physical A becomes Down. Other report bits remain unchanged. Changes can affect both standard controllers.",
+      "category": "input",
+      "points": [
+        {
+          "rva": 1699516,
+          "original": "b207",
+          "offset": 1,
+          "value": 1,
+          "label": "A report source",
+          "original_instruction": "mov dl, 7",
+          "modified_instruction": "mov dl, 1",
+          "evidence": "Standard NES ToByte report constructor. Only IsPressed button-ID immediate changes; same 0..7 physical button domain. Start/Select and controller serial shifting unchanged."
+        },
+        {
+          "rva": 1699582,
+          "original": "b201",
+          "offset": 1,
+          "value": 7,
+          "label": "Down report source",
+          "original_instruction": "mov dl, 1",
+          "modified_instruction": "mov dl, 7",
+          "evidence": "Standard NES ToByte report constructor. Only IsPressed button-ID immediate changes; same 0..7 physical button domain. Start/Select and controller serial shifting unchanged."
+        }
+      ],
+      "report_mapping": {
+        "A": 1,
+        "Down": 7
+      }
+    },
+    {
+      "id": "controls_vertical_actions",
+      "title": "Vertical movement also presses A/B",
+      "description": "Physical Up produces Up+A; physical Down produces Down+B. Physical A/B no longer drive those two action bits. Start and Select stay unchanged. Can change movement, jumping and attacks depending on the game.",
+      "category": "input",
+      "points": [
+        {
+          "rva": 1699516,
+          "original": "b207",
+          "offset": 1,
+          "value": 0,
+          "label": "A report source",
+          "original_instruction": "mov dl, 7",
+          "modified_instruction": "mov dl, 0",
+          "evidence": "Standard NES ToByte report constructor. Only IsPressed button-ID immediate changes; same 0..7 physical button domain. Start/Select and controller serial shifting unchanged."
+        },
+        {
+          "rva": 1699526,
+          "original": "b206",
+          "offset": 1,
+          "value": 1,
+          "label": "B report source",
+          "original_instruction": "mov dl, 6",
+          "modified_instruction": "mov dl, 1",
+          "evidence": "Standard NES ToByte report constructor. Only IsPressed button-ID immediate changes; same 0..7 physical button domain. Start/Select and controller serial shifting unchanged."
+        }
+      ],
+      "report_mapping": {
+        "A": 0,
+        "B": 1
+      }
+    }
+  ],
+  "data_guards": [
+    {
+      "rva": 6227568,
+      "expected": "0000000000000001000000000000010100000000010101010101010101010000",
+      "label": "Native pulse duty table"
+    }
+  ]
+}
