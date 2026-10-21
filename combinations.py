@@ -4,14 +4,21 @@
 """Combine verified presets while keeping native instruction edits compatible."""
 from itertools import combinations
 
+from typings_and_alias import Point, Effect
+
 MAX_PRESETS = 4
 MAX_PATCHES = 16
 
-def signature(point):
-    return (point['rva'],point['original'],point['offset'],point['value'])
+def signature(point: Point):
+    return (
+        point['rva'],
+        point['original'],
+        point['offset'],
+        point['value']
+    )
 
-def merge_points(effects, keys):
-    keys=tuple(dict.fromkeys(keys))
+def merge_points(effects: dict[str, Effect], keys):
+    keys = tuple(dict.fromkeys(keys))
     if not keys:raise ValueError('Select at least one experiment')
     if len(keys)>MAX_PRESETS:raise ValueError(f'Select at most {MAX_PRESETS} presets at once')
     merged=[]
