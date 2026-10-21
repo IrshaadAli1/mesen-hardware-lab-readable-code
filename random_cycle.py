@@ -181,42 +181,89 @@ class RandomCycle:
 
     def _roll_tick(self):
         try:
-            now=self.clock();before=tuple(self.expires)
-            self.expires={key:deadline for key,deadline in self.expires.items() if deadline>now}
-            if now>=self.next_add:
-                if len(self.expires)<self.limit:
-                    candidates=[key for key in self.pool if key not in self.expires and self.compatible(tuple(self.expires)+(key,))]
-                    choices=[key for key in candidates if key!=self.last] or candidates
+            now = self.clock()
+            before = tuple(self.expires)
+            self.expires = {
+                key:deadline
+                for key,deadline in self.expires.items()
+                if deadline > now
+            }
+            if now >= self.next_add:
+                if len(self.expires) < self.limit:
+                    candidates = [
+                        key
+                        for key in self.pool
+                        if (key not in self.expires and self.compatible(tuple(self.expires)+(key,)))
+                    ]
+
+                    choices = [
+                                  key for key in candidates
+                                  if key != self.last
+                              ] or candidates
+
                     if choices:
-                        key=self.rng.choice(choices);self.last=key
-                        self.expires[key]=now+self.rng.uniform(*self.duration)
-                self.next_add=now+self.rng.uniform(*self.gap)
-            active=tuple(self.expires)
-            if active!=before:
-                if active:self.apply(active)
-                else:self.restore()
-            deadline=min([self.next_add,*self.expires.values()])
-            self._later(max(.001,deadline-self.clock()),self._roll_tick,f'Rolling: {len(active)} active; next event')
-        except Exception as exc:self._failed(exc)
+                        key = self.rng.choice(choices)
+                        self.last = key
+                        self.expires[key] = now + self.rng.uniform(*self.duration)
+
+                self.next_add = now + self.rng.uniform(*self.gap)
+
+            active = tuple(self.expires)
+            if active != before:
+                if active: self.apply(active)
+                else:      self.restore()
+
+            deadline = min([self.next_add,*self.expires.values()])
+            self._later(
+                max(.001,deadline-self.clock()),
+                self._roll_tick,
+                f'Rolling: {len(active)} active; next event'
+            )
+
+        except Exception as exc: self._failed(exc)
 
     def _walk_tick(self):
         try:
-            now=self.clock()
-            if self.walk_end is None:self.walk_end=now+self.rng.uniform(*self.duration)
-            elif now>=self.walk_end:self._clean();return
-            candidates=[]
-            if len(self.walk)<self.limit:
-                candidates.extend(self.walk+(key,) for key in self.pool
-                                  if key not in self.walk and self.compatible(self.walk+(key,)))
-            # Remove exactly one preset; keep a nonempty stack unless the pool is isolated.
-            if len(self.walk)>1 or not candidates:
-                candidates.extend(self.walk[:i]+self.walk[i+1:] for i in range(len(self.walk)))
-            choices=[keys for keys in candidates if frozenset(keys)!=self.walk_previous] or candidates
+            now = self.clock()
+            if self.walk_end is None:
+                self.walk_end = now + self.rng.uniform(*self.duration)
+            elif now >= self.walk_end:
+                self._clean()
+                return
+
+            candidates = []
+            if len(self.walk) < self.limit:
+                candidates.extend(
+                    self.walk+(key,)
+                    for key in self.pool
+                    if key not in self.walk and self.compatible(self.walk+(key,))
+                )
+
+            if len(self.walk) > 1 or not candidates:
+                candidates.extend(
+                    self.walk[:i]+self.walk[i+1:]
+                    for i in range(len(self.walk))
+                )
+
+            choices = [
+                          keys
+                          for keys in candidates
+                          if frozenset(keys)!=self.walk_previous
+                      ] or candidates
+
             if choices:
-                next_keys=self.rng.choice(choices)
-                self.walk_previous=frozenset(self.walk);self.walk=next_keys
-                if self.walk:self.apply(self.walk)
-                else:self.restore()
-            delay=min(self.rng.uniform(*self.gap),max(.001,self.walk_end-self.clock()))
-            self._later(delay,self._walk_tick,f'Mutation walk: {len(self.walk)} active; next step/reset')
-        except Exception as exc:self._failed(exc)
+                next_keys = self.rng.choice(choices)
+                self.walk_previous = frozenset(self.walk)
+                self.walk = next_keys
+
+                if self.walk: self.apply(self.walk)
+                else:         self.restore()
+
+            delay = min(
+                self.rng.uniform(*self.gap),
+                max(.001,self.walk_end-self.clock())
+            )
+
+            self._later(delay, self._walk_tick,f'Mutation walk: {len(self.walk)} active; next step/reset')
+
+        except Exception as exc: self._failed(exc)
