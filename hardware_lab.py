@@ -11,11 +11,11 @@ from random_cycle import RandomCycle, MODES
 from combinations import merge_points, compatible_groups, MAX_PATCHES
 from winmem import Windows, Target, Engine, ALLOWED
 
-from typings_and_alias import Effect, Length, CVoidPtr, NumberLike
+from typings_and_alias import EffectsDict, Length, CVoidPtr, NumberLike, Keys
 
 
 MANIFEST:   dict                     = json.loads(Path(__file__).with_name('build_manifest.json').read_text())
-EFFECTS :   dict[str, Effect]        = {item['id']:item for item in MANIFEST['effects']}
+EFFECTS :   EffectsDict              = {item['id']:item for item in MANIFEST['effects']}
 
 @dataclass(frozen=True)
 class Patch:
@@ -74,8 +74,8 @@ class LabSession:
         return self.apply_many((effect_id,))
 
     def apply_many(self, effect_ids) -> Length:
-        keys: tuple = tuple(dict.fromkeys(effect_ids))
-        points = merge_points(EFFECTS,keys)  # Validate before touching the current state.
+        keys: Keys = tuple(dict.fromkeys(effect_ids))
+        points = merge_points(EFFECTS, keys)  # Validate before touching the current state.
         patches: list[Patch] = []
 
         for point in points:
@@ -534,13 +534,13 @@ def main():
 
         try:
             live_session()
-            keys: list = [list(EFFECTS)[i] for i in pool.curselection()]
+            keys: list[str] = [list(EFFECTS)[i] for i in pool.curselection()]
             minimum = 1 if mode.get() in ('Rolling overlap','Mutation walk') else int(count_min.get())
 
             random_status.set('Preparing compatible groups…')
             root.update_idletasks()
 
-            groups = compatible_groups(EFFECTS,keys,minimum,int(count_max.get()))
+            groups = compatible_groups(EFFECTS, keys, minimum, int(count_max.get()))
             random_cycle.start(
                 keys,
                 (gap_min.get(), gap_max.get()),

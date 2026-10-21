@@ -1,4 +1,4 @@
-from typing import TypeAlias, Any, TypedDict
+from typing import TypeAlias, Any, TypedDict, Iterable, Callable
 
 
 class Point(TypedDict):
@@ -26,3 +26,4 @@ EffectsDict: TypeAlias = dict[str, Effect]
 CVoidPtr:    TypeAlias = Any
 NumberLike:  TypeAlias = int | float
 Length:      TypeAlias = int
+Keys:        TypeAlias = Iterable[str]  # Often keys of EffectsDict (can be tuple or list)
