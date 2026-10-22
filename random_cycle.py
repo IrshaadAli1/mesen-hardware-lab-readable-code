@@ -6,8 +6,6 @@ import math
 import random
 import time
 
-from typings_and_alias import Callable
-
 MODES=('Classic bursts','Build-up','Stutter','Rolling overlap','Mutation walk')
 
 class RandomCycle:
@@ -19,10 +17,10 @@ class RandomCycle:
         self.notify  = notify
         self.error   = error
 
-        self.rng  : random.Random       = rng or random.Random()
-        self.clock: Callable[[], float] = clock or time.monotonic
+        self.rng   = rng or random.Random()
+        self.clock = clock or time.monotonic
 
-        self.running: bool = False
+        self.running       = False
         self.timer         = None
         self.generation    = 0
         self.last          = None
@@ -33,7 +31,7 @@ class RandomCycle:
 
         if self.timer is not None:
             self.cancel(self.timer)
-            self.timer=None
+            self.timer = None
 
     def start(self, pool, gap, duration, groups=None, mode='Classic bursts', compatible=None):
         pool = tuple(dict.fromkeys(pool))

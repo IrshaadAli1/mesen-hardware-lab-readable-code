@@ -4,12 +4,10 @@
 """Combine verified presets while keeping native instruction edits compatible."""
 from itertools import combinations
 
-from typings_and_alias import Point, EffectsDict, NumberLike
-
 MAX_PRESETS = 4
 MAX_PATCHES = 16
 
-def signature(point: Point):
+def signature(point):
     return (
         point['rva'],
         point['original'],
@@ -17,15 +15,15 @@ def signature(point: Point):
         point['value']
     )
 
-def merge_points(effects: EffectsDict, keys):
-    keys = tuple(dict.fromkeys(keys))
+def merge_points(effects, keys):
+    keys = tuple(dict.fromkeys(keys))  # Another fast copy / removal of duplicate keys - Irshaad
     if not keys:
         raise ValueError('Select at least one experiment')
 
-    if len(keys)>MAX_PRESETS:
+    if len(keys) > MAX_PRESETS:
         raise ValueError(f'Select at most {MAX_PRESETS} presets at once')
 
-    merged: list = []
+    merged = []
     for key in keys:
 
         if key not in effects:
@@ -53,31 +51,31 @@ def merge_points(effects: EffectsDict, keys):
 
     return [point for point, owner in merged]
 
-def compatible_groups(effects: EffectsDict, pool, minimum: NumberLike, maximum: NumberLike):
+def compatible_groups(effects, pool, minimum: int, maximum: int):
     if not (1 <= minimum <= maximum <= MAX_PRESETS):
         raise ValueError(f'Simultaneous preset range must be 1–{MAX_PRESETS}, minimum <= maximum')
 
     pool = tuple(dict.fromkeys(pool))
     for key in pool:
-        if key not in effects:raise ValueError('Unknown experiment: '+str(key))
+        if key not in effects: raise ValueError('Unknown experiment: '+str(key))
 
     result = {}
     seen   = set()
     for count in range(minimum, min(maximum,len(pool))+1):
 
         choices = []
-        for keys in combinations(pool,count):
+        for keys in combinations(pool, count):  # combinations(p, r) - r-length tuples, in sorted order, no repeated elements
 
             try: points = merge_points(effects,keys)
             except ValueError: continue
 
-            sets: list = [
+            sets = [
                 {signature(p) for p in effects[key]['points']}
                 for key in keys
             ]
 
             # Each selected preset must contribute a rule not supplied by the others.
-            if any(not (s-set().union(*(sets[:i]+sets[i+1:]))) for i,s in enumerate(sets)): continue
+            if any(not (s-set().union(*(sets[:i]+sets[i+1:]))) for i,s in enumerate(sets)): continue  # Don't ask me how the hell this works - Irshaad
 
             fingerprint = frozenset(signature(p) for p in points)
             if fingerprint not in seen:

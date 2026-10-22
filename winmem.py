@@ -9,14 +9,14 @@ import random
 import struct
 import sys
 
-ALLOWED: set[str] = {
+ALLOWED = {
     'mesen.exe',
     'mesen2.exe',
     'mesence.exe',
     'mesen-s.exe'
 }
 
-MODULES: set[str] = (
+MODULES = (
     ALLOWED | {
     'mesencore.dll',
     'meseninterop.dll'
@@ -92,15 +92,15 @@ class Windows:
         self.p.GetModuleFileNameExW.restype  = D
 
     @staticmethod
-    def check(ok):
+    def check(ok):  # I think this thing just checks whether the value returned is 0
         if not ok:
             raise C.WinError(C.get_last_error())
 
 
 class Target:
     def __init__(self, api, pid):
-        self.api    = api
-        self.handle = api.k.OpenProcess(0x100000 | 0x0400 | 0x0038, False, pid)
+        self.api     = api
+        self.handle  = api.k.OpenProcess(0x100000 | 0x0400 | 0x0038, False, pid)
         api.check(self.handle)
 
         try:
@@ -119,7 +119,7 @@ class Target:
             self.api.k.CloseHandle(self.handle)
             self.handle = None
 
-    def alive(self) -> bool:
+    def alive(self):
         return self.handle and self.api.k.WaitForSingleObject(self.handle, 0) == 258
 
     def read(self, address, size):
@@ -177,10 +177,10 @@ class Target:
 
 class Engine:
     def __init__(self, target: Target):
-        self.target     = target
-        self.original   = {}
-        self.rng        = random.Random()
-        self.cache      = {}
+        self.target   = target
+        self.original = {}
+        self.rng      = random.Random()
+        self.cache    = {}  # I can't find a usage for it what is this var for - Irshaad
 
     def blast(self, candidates, count=1, active_limit=1, profile='Conservative'):
         if not 1 <= count <= active_limit <= 24:
@@ -204,7 +204,7 @@ class Engine:
                     available = [c for c in candidates if c.patch_address not in self.original]
 
                 item = self.rng.choice(available)
-                before = self.target.read(item.address, len(item.code))
+                before: bytes = self.target.read(item.address, len(item.code))
                 if before != item.code:
                     raise ValueError('Instruction changed since scan; restart Mesen and reattach')
 
@@ -233,6 +233,7 @@ class Engine:
             except Exception:
                 pass  # Recovery records remain when restoration fails.
             raise
+
         return changes
 
     def restore(self, address):
@@ -241,9 +242,9 @@ class Engine:
         if current not in (item.code, expected):
             raise ValueError('Code changed externally; refusing to overwrite it. Restart Mesen.')
 
-        self.target.write(address, item.code[item.offset:item.offset+1])
+        self.target.write(address, item.code[item.offset : item.offset+1])
         if self.target.read(item.address, len(item.code)) != item.code:
-            raise OSError('Restore verification failed')
+            raise OSError('Restore verification failed')  # wuh oh
 
         del self.original[address]
 

@@ -11,11 +11,8 @@ from random_cycle import RandomCycle, MODES
 from combinations import merge_points, compatible_groups, MAX_PATCHES
 from winmem import Windows, Target, Engine, ALLOWED
 
-from typings_and_alias import EffectsDict, Length, CVoidPtr, NumberLike, Keys
-
-
-MANIFEST:   dict                     = json.loads(Path(__file__).with_name('build_manifest.json').read_text())
-EFFECTS :   EffectsDict              = {item['id']:item for item in MANIFEST['effects']}
+MANIFEST = json.loads(Path(__file__).with_name('build_manifest.json').read_text())
+EFFECTS  = {item['id']:item for item in MANIFEST['effects']}
 
 @dataclass(frozen=True)
 class Patch:
@@ -29,17 +26,16 @@ class Patch:
     @property
     def patch_address(self) -> int: return self.address + self.offset
 
-
-def verify_build(target: Target, base: CVoidPtr):
+def verify_build(target, base):
     dos: bytes = target.read(base,64)
     if dos[:2] != b'MZ':
         raise ValueError('Invalid module header')
 
-    off: NumberLike = struct.unpack_from('<I',dos,60)[0]
+    off = struct.unpack_from('<I',dos,60)[0]
     if not 64<=off<=1024*1024:
         raise ValueError('Invalid PE offset')
 
-    header: bytes = target.read(base+off,88)
+    header = target.read(base+off,88)
     if header[:4] != b'PE\0\0' or struct.unpack_from('<H',header,4)[0] != 0x8664:
         raise ValueError('Expected the supported x64 MesenCore.dll')
 
@@ -56,33 +52,32 @@ def verify_build(target: Target, base: CVoidPtr):
         if target.read(base+guard['rva'], len(expected))!=expected:
             raise ValueError(guard['label']+' differs from the verified build. Restart Mesen.')
 
-
 class LabSession:
-    def __init__(self, target: Target, base: CVoidPtr):
+    def __init__(self, target, base):
         verify_build(target,base)
-        self.target:        Target         = target
-        self.base  :        CVoidPtr       = base
-        self.engine:        Engine         = Engine(target)
-        self.active                        = None
+        self.target = target
+        self.base   = base
+        self.engine = Engine(target)
+        self.active = None
 
-    def restore(self) -> int:
+    def restore(self):
         count = self.engine.undo()
         self.active = None
         return count
 
-    def apply(self,effect_id) -> Length:
+    def apply(self, effect_id):
         return self.apply_many((effect_id,))
 
-    def apply_many(self, effect_ids) -> Length:
-        keys: Keys = tuple(dict.fromkeys(effect_ids))
+    def apply_many(self, effect_ids):
+        keys = tuple(dict.fromkeys(effect_ids))  # Removes duplicate ids apparently (note: WHILE KEEPING ORDER!) - Irshaad
         points = merge_points(EFFECTS, keys)  # Validate before touching the current state.
-        patches: list[Patch] = []
+        patches = []
 
         for point in points:
             original = bytes.fromhex(point['original'])
             patches.append(Patch(self.base+point['rva'],original,point['offset'],point['label'],(point['value'],)))
 
-        desired: dict[int, Patch] ={p.patch_address: p for p in patches}
+        desired = {p.patch_address: p for p in patches}
         if len(desired) != len(patches):
             raise ValueError('Duplicate patch site in experiment')
 
@@ -94,18 +89,20 @@ class LabSession:
         for item in patches:
             prior = next((record for record in self.engine.original.values()
                         if record[0].address==item.address and record[0].code==item.code),None)
+
             expected = prior[1] if prior else item.code
-            if self.target.read(item.address,len(item.code))!=expected:
+
+            if self.target.read(item.address,len(item.code)) != expected:
                 raise ValueError('Instruction mismatch. Restart Mesen before applying this experiment.')
 
-        def unchanged(item,expected,wanted) -> bool:
+        def unchanged(item,expected,wanted):
             return (wanted is not None and item.address==wanted.address and item.code==wanted.code
                     and item.offset==wanted.offset and expected[item.offset]==wanted.values[0])
 
         try:
             # Retained patches never toggle off. Remove obsolete edits before adding new ones.
             for address,(item,expected) in list(self.engine.original.items()):
-                if not unchanged(item,expected,desired.get(address)):self.engine.restore(address)
+                if not unchanged(item, expected, desired.get(address)): self.engine.restore(address)
 
             for patch in patches:
                 if patch.patch_address not in self.engine.original:
@@ -120,6 +117,7 @@ class LabSession:
         return len(patches)
 
 
+# I am way too tired to remove the typing I added for most of this..
 def main():
     import tkinter as tk
     from tkinter import ttk, messagebox
@@ -129,9 +127,11 @@ def main():
 
     root: tk.Tk = tk.Tk()
     root.title('Mesen Hardware Lab v14 — Impossible NES')
-    root.geometry('960x920');root.minsize(860,820)
+    root.geometry('960x920')
+    root.minsize(860,820)
 
-    frame: ttk.Frame = ttk.Frame(root,padding=20);frame.pack(fill='both',expand=True)
+    frame: ttk.Frame = ttk.Frame(root,padding=20)
+    frame.pack(fill='both',expand=True)
 
     ttk.Label(
         frame,
@@ -330,7 +330,7 @@ def main():
     log: tk.Text = tk.Text(frame,height=8,state='disabled',font=('Consolas',10))
     log.pack(fill='both',expand=True)
 
-    state: dict = {
+    state = {
         'target':       None,
         'session':      None,
         'pids':         [],
@@ -353,9 +353,9 @@ def main():
 
     def cancel_timers() -> None:
         for key in ('ab','pulse'):
-            if state[key] is not None:
+            if state[key] is not None:  # Ignore these warnings
                 root.after_cancel(state[key])
-                state[key]=None
+                state[key] = None
 
         state['ab_running'] = False
         ab_button.configure(text='Start A/B • 2 seconds')
@@ -534,7 +534,7 @@ def main():
 
         try:
             live_session()
-            keys: list[str] = [list(EFFECTS)[i] for i in pool.curselection()]
+            keys = [list(EFFECTS)[i] for i in pool.curselection()]
             minimum = 1 if mode.get() in ('Rolling overlap','Mutation walk') else int(count_min.get())
 
             random_status.set('Preparing compatible groups…')
@@ -557,12 +557,12 @@ def main():
         except Exception as exc: fail(exc)
 
     def refresh():
-        found=[]
+        found = []
         for proc in psutil.process_iter(['pid','name']):
             if (proc.info['name'] or '').lower() in ALLOWED:
                 found.append((
-                    proc.info['pid'],
-                    proc.info['name']
+                    proc.info['pid'],   # I'm assuming int
+                    proc.info['name']   # I'm assuming str
                 ))
 
         state['pids'] = found
@@ -587,7 +587,7 @@ def main():
                 state['target'].close()
 
             state['target'] = state['session'] = None
-            target = Target(api,state['pids'][index][0])
+            target = Target(api, state['pids'][index][0])
             cores = [base for name, base in target.modules() if name.lower() == 'mesencore.dll']  # This is some kinda C voidptr I think
 
             if len(cores)!=1:
